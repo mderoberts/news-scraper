@@ -42,3 +42,19 @@ db.once("open", function() {
 
 // Routes
 // ======
+
+// GET request to scrape website and save to db
+
+// GET scraped articles from db
+
+// GET articles by objectId
+
+// Create and remove comments
+
+
+
+// Listen on port 3000
+app.listen(3000, function() {
+    console.log("App running on port 3000!");
+  });
+  
