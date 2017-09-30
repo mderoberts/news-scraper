@@ -3,20 +3,16 @@ var express = require("express");
 var bodyParser = require("body-parser");
 var logger = require("morgan");
 var mongoose = require("mongoose");
-// Requiring our Note and Article models
-var Note = require("./models/Note.js");
-var Article = require("./models/Article.js");
-// Our scraping tools
+var Comment = require("./models/comment.js");
+var Article = require("./models/article.js");
 var request = require("request");
 var cheerio = require("cheerio");
-// Set mongoose to leverage built in JavaScript ES6 Promises
+
 mongoose.Promise = Promise;
 
-
-// Initialize Express
 var app = express();
 
-// Use morgan and body parser with our app
+// Morgan and body parser 
 app.use(logger("dev"));
 app.use(bodyParser.urlencoded({
   extended: false
@@ -41,15 +37,84 @@ db.once("open", function() {
 
 
 // Routes
-// ======
 
 // GET request to scrape website and save to db
+app.get("/scrape", function(req, res) {
+  request("http://www.nytimes.com/", function(error, response, html) {
+    var $ = cheerio.load(html);
+    $("h2.story-heading").each(function(i, element) {
+
+      var result = {};
+
+      result.title = $(this).children("a").text();
+      result.link = $(this).children("a").attr("href");
+
+      var entry = new Article(result);
+
+      entry.save(function(err, doc) {
+        if (err) {
+          console.log(err);
+        }
+        else {
+          console.log(doc);
+        }
+      });
+
+    });
+  });
+  res.send("Scrape Complete");
+});
 
 // GET scraped articles from db
 
+app.get("/articles", function(req, res) {
+  Article.find({}, function(error, doc) {
+    if (error) {
+      console.log(error);
+    }
+    else {
+      res.json(doc);
+    }
+  });
+});
+
+
 // GET articles by objectId
+app.get("/articles/:id", function(req, res) {
+  Article.findOne({ "_id": req.params.id })
+  .populate("comment")
+  .exec(function(error, doc) {
+    if (error) {
+      console.log(error);
+    }
+    else {
+      res.json(doc);
+    }
+  });
+});
+
 
 // Create and remove comments
+app.post("/articles/:id", function(req, res) {
+  var newComment = new Comment(req.body);
+
+  newComment.save(function(error, doc) {
+    if (error) {
+      console.log(error);
+    }
+    else {
+      Article.findOneAndUpdate({ "_id": req.params.id }, { "comment": doc._id })
+      .exec(function(err, doc) {
+        if (err) {
+          console.log(err);
+        }
+        else {
+          res.send(doc);
+        }
+      });
+    }
+  });
+});
 
 
 
